@@ -1,0 +1,184 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FuelRoute USA - Optimal Fuel Route Planner API & Interactive Map</title>
+    <meta name="description" content="Calculate driving routes and cost-optimal fuel stops across the continental USA with a 500-mile vehicle range and 10 MPG fuel economy.">
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+</head>
+<body>
+    <!-- Top Navigation Header -->
+    <header class="app-header">
+        <div class="brand-container">
+            <div class="brand-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18"/>
+                    <path d="M15 10h2a2 2 0 0 1 2 2v2a2 2 0 0 0 2 2v0a2 2 0 0 0 2-2V8l-3-3"/>
+                    <path d="M7 6h4"/>
+                    <path d="M7 10h4"/>
+                </svg>
+            </div>
+            <div>
+                <span class="brand-title">FuelRoute USA</span>
+            </div>
+            <span class="brand-badge">Optimal Planner</span>
+        </div>
+
+        <div class="header-actions">
+            <a href="/api/route/?start=Dallas,TX&finish=Chicago,IL" target="_blank" class="btn-secondary" id="btn-api-endpoint">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                REST API Endpoint
+            </a>
+        </div>
+    </header>
+
+    <!-- Main Workspace -->
+    <main class="main-container">
+        <!-- Left Sidebar: Controls & Metrics -->
+        <aside class="control-sidebar">
+            <!-- Planner Inputs Card -->
+            <section class="planner-card">
+                <h1 class="card-title">
+                    Route Planner
+                    <span style="font-size:0.75rem;font-weight:400;color:var(--text-dim);">500 mi range • 10 MPG</span>
+                </h1>
+
+                <!-- Error Banner -->
+                <div id="error-banner" style="display:none;background:rgba(244,63,94,0.15);border:1px solid rgba(244,63,94,0.3);color:#fb7185;padding:8px 12px;border-radius:var(--radius-sm);font-size:0.8rem;margin-bottom:12px;"></div>
+
+                <form id="planner-form">
+                    <!-- Start Point -->
+                    <div class="input-group">
+                        <label class="input-label" for="input-start">
+                            <span style="color:#10b981;">●</span> Start Location
+                        </label>
+                        <div class="input-wrapper">
+                            <span class="input-icon">📍</span>
+                            <input type="text" id="input-start" class="form-control" placeholder="e.g. Dallas, TX or 32.79,-96.76" required value="Dallas, TX">
+                        </div>
+                    </div>
+
+                    <!-- Swap Button -->
+                    <div class="swap-container">
+                        <button type="button" class="btn-swap" id="btn-swap" title="Swap Start and Finish">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m7 15 5 5 5-5"/><path d="m7 9 5-5 5 5"/></svg>
+                        </button>
+                    </div>
+
+                    <!-- Finish Point -->
+                    <div class="input-group">
+                        <label class="input-label" for="input-finish">
+                            <span style="color:#f43f5e;">●</span> Finish Location
+                        </label>
+                        <div class="input-wrapper">
+                            <span class="input-icon">🏁</span>
+                            <input type="text" id="input-finish" class="form-control" placeholder="e.g. Chicago, IL or 41.87,-87.62" required value="Chicago, IL">
+                        </div>
+                    </div>
+
+                    <!-- Presets -->
+                    <div class="presets-section">
+                        <div class="presets-label">Popular US Routes:</div>
+                        <div class="presets-chips">
+                            <button type="button" class="chip" data-start="New York, NY" data-finish="Los Angeles, CA">NY → LA</button>
+                            <button type="button" class="chip" data-start="Seattle, WA" data-finish="Miami, FL">Seattle → Miami</button>
+                            <button type="button" class="chip" data-start="Dallas, TX" data-finish="Chicago, IL">Dallas → Chicago</button>
+                            <button type="button" class="chip" data-start="San Francisco, CA" data-finish="Denver, CO">SF → Denver</button>
+                            <button type="button" class="chip" data-start="Atlanta, GA" data-finish="Boston, MA">Atlanta → Boston</button>
+                        </div>
+                    </div>
+
+                    <!-- Advanced Toggle -->
+                    <button type="button" class="advanced-toggle" id="advanced-toggle">
+                        <span>Vehicle & Search Parameters</span>
+                        <span class="toggle-arrow">▼</span>
+                    </button>
+
+                    <div class="advanced-panel" id="advanced-panel">
+                        <div class="input-group">
+                            <label class="input-label" for="input-mpg">Fuel Economy</label>
+                            <input type="number" id="input-mpg" class="form-control" value="10" step="0.5" min="1" max="50">
+                        </div>
+                        <div class="input-group">
+                            <label class="input-label" for="input-range">Max Range (mi)</label>
+                            <input type="number" id="input-range" class="form-control" value="500" step="50" min="100" max="1500">
+                        </div>
+                        <div class="input-group" style="grid-column: span 2;">
+                            <label class="input-label" for="input-corridor">Highway Corridor Search Buffer (mi)</label>
+                            <input type="number" id="input-corridor" class="form-control" value="10" step="1" min="2" max="30">
+                        </div>
+                    </div>
+
+                    <!-- Submit Button -->
+                    <button type="submit" class="btn-primary" id="btn-calculate">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                        Plan Route & Fuel Stops
+                    </button>
+                </form>
+            </section>
+
+            <!-- Metrics Cards Grid -->
+            <section class="metrics-grid">
+                <div class="metric-card">
+                    <span class="metric-label">Total Distance</span>
+                    <span class="metric-value highlight-miles" id="metric-distance">--</span>
+                    <span class="metric-sub" id="metric-duration">--</span>
+                </div>
+                <div class="metric-card">
+                    <span class="metric-label">Total Fuel Cost</span>
+                    <span class="metric-value highlight-cost" id="metric-cost">--</span>
+                    <span class="metric-sub" id="metric-avg-price">--</span>
+                </div>
+                <div class="metric-card">
+                    <span class="metric-label">Fuel Consumed</span>
+                    <span class="metric-value" id="metric-gallons">--</span>
+                    <span class="metric-sub">At 10 miles/gal</span>
+                </div>
+                <div class="metric-card">
+                    <span class="metric-label">Optimal Fuel Stops</span>
+                    <span class="metric-value" id="metric-stops">--</span>
+                    <span class="metric-sub">&lt; 500 mi range gap</span>
+                </div>
+            </section>
+
+            <!-- Itinerary Timeline -->
+            <section class="itinerary-container">
+                <div class="itinerary-header">
+                    <h2 style="font-size:0.95rem;font-weight:600;color:var(--text-main);">Optimized Fuel Stops</h2>
+                    <span style="font-size:0.75rem;color:var(--text-dim);">Click stop to focus</span>
+                </div>
+                <div id="itinerary-list">
+                    <!-- Populated dynamically by JavaScript -->
+                </div>
+            </section>
+        </aside>
+
+        <!-- Right: Map Viewport -->
+        <section class="map-viewport">
+            <div id="map"></div>
+            <!-- Loading Overlay -->
+            <div class="map-loading-overlay" id="map-loading-overlay">
+                <div class="spinner"></div>
+                <div class="loading-text">Calculating driving route & optimal fuel stops...</div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <!-- App Script -->
+    <script src="{% static 'js/app.js' %}"></script>
+</body>
+</html>

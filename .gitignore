@@ -1,0 +1,38 @@
+# Python virtual environments
+venv/
+env/
+ENV/
+.venv/
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Django database & media
+*.sqlite3
+db.sqlite3-journal
+
+# Environment variables & secrets
+.env
+.env.local
+*.env
+
+# Static files collected
+staticfiles/
+
+# Logs and databases
+*.log
+*.pot
+
+# IDEs & OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Test and coverage artifacts
+.coverage
+htmlcov/
+.pytest_cache/
